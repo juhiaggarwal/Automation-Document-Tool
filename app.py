@@ -91,7 +91,6 @@ mail = Mail(app)
 
 #SAVE FOLDER LOCATION
 UPLOAD_DIR = tempfile.gettempdir()
-#UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
