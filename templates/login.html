@@ -385,7 +385,22 @@ document.getElementById("loginForm").addEventListener("submit", async function (
       icon.classList.replace("fa-eye-slash", "fa-eye");
     }
   }
+window.addEventListener('DOMContentLoaded', () => {
+  const sound = document.getElementById('assistant-sound');
+  sound.volume = 0.3; // Set volume to 30% (adjust between 0.0 - 1.0)
 
+  // Try playing the sound
+  sound.play().then(() => {
+    // Stop the sound after 2 seconds
+    setTimeout(() => {
+      sound.pause();
+      sound.currentTime = 0;
+    }, 2000);
+  }).catch((err) => {
+    console.warn("Autoplay might be blocked by the browser:", err);
+  });
+});
+  
   function promptReset() {
   Swal.fire({
     title: 'Enter your registered email',
