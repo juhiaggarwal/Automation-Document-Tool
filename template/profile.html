@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body.dark {
+      background-image: linear-gradient(to bottom right, #1a1a1a, #2c2c2c);
+    }
+  
+    body.dark .bg-white {
+      background-color: #1f1f1f !important;
+    }
+  
+    body.dark .text-gray-800 {
+      color: #f3f4f67c !important;
+    }
+  
+
+    /* Dark mode styles for the dark mode toggle button */
+body.dark #darkModeToggle {
+  background-color: #4b5563 !important; /* gray-600 */
+  color: #ffffff !important;
+}
+
+/* Optional light mode fallback */
+#darkModeToggle {
+  background-color: #ffffff;
+  color: #4b5563;
+}
+
+/* Light mode (default) – black border */
+#darkModeToggle {
+  background-color: #ffffff;
+  color: #4b5563; /* gray-600 */
+  border: 1px solid #000000; /* black border */
+  transition: all 0.3s ease;
+}
+
+/* Dark mode – gray background and white text, no black border */
+body.dark #darkModeToggle {
+  background-color: #4b5563 !important; /* gray-600 */
+  color: #ffffff !important;
+  border: 1px solid #4b5563 !important; /* match background or use transparent */
+}
+
+    body.dark .text-gray-700 {
+      color: #d1d5db !important;
+    }
+  
+    body.dark input,
+    body.dark .bg-gray-100 {
+      background-color: #2a2a2a !important;
+      color: #f9fafb !important;
+    }
+  
+    body.dark input:read-only {
+      color: #9ca3af !important;
+    }
+  
+    body.dark .border-gray-300 {
+      border-color: #444 !important;
+    }
+  
+    body.dark .text-yellow-600 {
+      color: #facc15 !important;
+    }
+  
+    body.dark .hover\:text-yellow-800:hover {
+      color: #fde68a !important;
+    }
+  
+    body.dark .bg-yellow-100 {
+      background-color: #4b3200 !important;
+    }
+  
+    body.dark .bg-purple-100 {
+      background-color: #3b2f4a !important;
+    }
+  
+    body.dark .text-purple-600 {
+      color: #c4b5fd !important;
+    }
+  
+    body.dark .text-green-700 {
+      color: #86efac !important;
+    }
+  
+    body.dark .bg-green-100 {
+      background-color: #14532d !important;
+    }
+  
+    body.dark .shadow-xl,
+    body.dark .shadow {
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+  </style>
+  
+</head>
+
+<body class="bg-gradient-to-br from-yellow-100 via-white to-purple-100 min-h-screen flex items-center justify-center p-6 relative">
+  <button id="darkModeToggle" title="Toggle Dark Mode"
+  class="absolute top-4 right-4 w-10 h-8 flex items-center justify-center rounded
+         text-gray-600 bg-white hover:bg-gray-100
+         dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600
+         text-2xl transition">
+  🌙
+</button>
+
+
+  <a href="/dashboard" class="absolute top-4 left-4 text-yellow-600 hover:text-yellow-800 text-3xl font-bold">&larr;</a>
+
+  <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-2xl">
+    <h2 class="text-3xl font-bold text-gray-800 mb-4">👤 Edit Profile</h2>
+
+    <!-- Flash message -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div id="flashMessage" class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative transition-opacity duration-500" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline">{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data">
+      <div class="flex items-center space-x-4 mb-6">
+        <img id="profilePicPreview" src="{{ profile_pic }}" alt="Profile" class="w-24 h-24 rounded-full object-cover border-2 border-yellow-400 shadow">
+        <div>
+          <label for="profilePic" class="text-sm text-gray-600 font-medium">Upload New Photo</label>
+          <input type="file" name="profile_pic" id="profilePic" accept="image/*" onchange="previewPhoto()" class="block mt-1 text-sm"/>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-gray-700">First Name</label>
+          <input type="text" name="first_name" value="{{ first_name }}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg"/>
+        </div>
+        <div>
+          <label class="text-gray-700">Last Name</label>
+          <input type="text" name="last_name" value="{{ last_name }}" class="mt-1 w-full p-2 border border-gray-300 rounded-lg"/>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-gray-700">Email</label>
+          <input type="email" value="{{ email }}" readonly class="mt-1 w-full p-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-500"/>
+        </div>
+      </div>
+
+      <div class="mt-6 grid grid-cols-2 gap-4 text-center">
+        <div class="bg-yellow-100 p-4 rounded-lg shadow">
+          <div class="text-3xl font-bold text-yellow-600">{{ feedbacks_count }}</div>
+          <div class="text-gray-700 text-sm">Feedbacks Given</div>
+        </div>
+        <div class="bg-purple-100 p-4 rounded-lg shadow">
+          <div class="text-3xl font-bold text-purple-600">{{ reports_count }}</div>
+          <div class="text-gray-700 text-sm">Reports Generated</div>
+        </div>
+      </div>
+
+      <div class="mt-6 text-right">
+        <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded-lg transition">
+          Save Changes
+        </button>
+      </div>
+      <!-- Toast Notification -->
+<div id="toast-success"
+class="fixed top-5 right-5 z-50 flex items-center w-full max-w-xs p-4 mb-4 text-green-800 bg-green-100 rounded-lg shadow-lg opacity-0 transition-opacity duration-500"
+role="alert">
+<svg class="w-6 h-6 mr-2 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+  xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M5 13l4 4L19 7"></path></svg>
+<div class="text-sm font-medium">Profile updated successfully!</div>
+</div>
+
+    </form>
+  </div>
+
+  <script>
+    const toggleBtn = document.getElementById('darkModeToggle');
+  const body = document.body;
+
+  toggleBtn.addEventListener('click', () => {
+    body.classList.toggle('dark');
+
+    // Optional: Persist preference
+    if (body.classList.contains('dark')) {
+      localStorage.setItem('theme', 'dark');
+    } else {
+      localStorage.setItem('theme', 'light');
+    }
+  });
+
+  // Load theme on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('theme') === 'dark') {
+      body.classList.add('dark');
+    }
+  });
+    function previewPhoto() {
+      const file = document.getElementById('profilePic').files[0];
+      if (file) {
+        document.getElementById('profilePicPreview').src = URL.createObjectURL(file);
+      }
+    }
+
+    // Hide flash message after 3 seconds
+    window.onload = () => {
+      const flash = document.getElementById('flashMessage');
+      if (flash) {
+        setTimeout(() => {
+          flash.classList.add('opacity-0');
+        }, 3000);
+      }
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('updated') === '1') {
+      const toast = document.getElementById('toast-success');
+      toast.classList.remove('opacity-0');
+
+      // Hide after 3s
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+        // Remove ?updated=1 from URL without reload
+        const url = new URL(window.location);
+        url.searchParams.delete('updated');
+        window.history.replaceState({}, document.title, url);
+      }, 3000);
+    }
+  });
+
+  
+
+  </script>
+</body>
+</html>
