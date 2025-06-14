@@ -860,7 +860,7 @@ function exportToPDF() {
 
     fetch(`/export-pdf?filename=${encodeURIComponent(filename)}`)
         .then(res => res.json())
-        .then(data => {
+        .then(data => {0
             loader.style.display = "none"; // Hide the loader
 
             if (data.success) {
@@ -920,8 +920,7 @@ function parseRowSpanId(rowSpanId) {
 
 
 //-------CAMERA-----------
-
-function handleCameraUpload() {
+    function handleCameraUpload() {
   closeUploadModal();
   const rowSpanId = document.getElementById("current-upload-row").value;
 
@@ -957,14 +956,21 @@ function handleCameraUpload() {
   cancelBtn.textContent = 'Cancel';
   cancelBtn.style = 'margin-top:10px;margin-left:10px;padding:6px 12px;';
 
+  const switchBtn = document.createElement('button');
+  switchBtn.textContent = 'Switch Camera';
+  switchBtn.style = 'margin-top:10px;margin-left:10px;padding:6px 12px;';
+
   container.appendChild(cameraSelect);
   container.appendChild(video);
   container.appendChild(captureBtn);
   container.appendChild(cancelBtn);
+  container.appendChild(switchBtn);
   modal.appendChild(container);
   document.body.appendChild(modal);
 
   let currentStream = null;
+  let currentDeviceIndex = 0;
+  let videoDevices = [];
 
   function stopCurrentStream() {
     if (currentStream) {
@@ -975,7 +981,6 @@ function handleCameraUpload() {
 
   function startCamera(deviceId = null) {
     stopCurrentStream();
-
     const constraints = {
       video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "environment" }
     };
@@ -990,69 +995,74 @@ function handleCameraUpload() {
 
   navigator.mediaDevices.enumerateDevices()
     .then(async devices => {
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      videoDevices = devices.filter(device => device.kind === 'videoinput');
+
       if (videoDevices.length === 0) {
         alert("❌ No cameras detected.");
         document.body.removeChild(modal);
         return;
       }
 
-      console.log("📷 Found video devices:", videoDevices);
-
-      let preferredDeviceId = localStorage.getItem("preferredCameraId");
-
+      // Populate dropdown
+      cameraSelect.innerHTML = "";
       videoDevices.forEach((device, index) => {
         const option = document.createElement('option');
         option.value = device.deviceId;
         option.text = device.label || `Camera ${index + 1}`;
         cameraSelect.appendChild(option);
-
-        if (!preferredDeviceId && device.label.toLowerCase().includes("back")) {
-          preferredDeviceId = device.deviceId;
-        }
       });
 
-      cameraSelect.onchange = () => {
-        const selectedDeviceId = cameraSelect.value;
-        localStorage.setItem("preferredCameraId", selectedDeviceId);
-        startCamera(selectedDeviceId).catch(err => {
-          alert("❌ Failed to start selected camera: " + err.message);
-        });
-      };
-
-      try {
-        const initialDeviceId = preferredDeviceId || videoDevices[0].deviceId;
-        cameraSelect.value = initialDeviceId;
-
-        const started = await startCamera(initialDeviceId);
-        if (!started) throw new Error("Camera failed to start");
-
-      } catch (err) {
-        console.warn("⚠️ Failed to start preferred camera:", err.message);
-        localStorage.removeItem("preferredCameraId");
-
-        try {
-          const fallbackDeviceId = videoDevices[0].deviceId;
-          cameraSelect.value = fallbackDeviceId;
-          await startCamera(fallbackDeviceId);
-        } catch (e2) {
-          alert("❌ No usable camera found.");
-          document.body.removeChild(modal);
-        }
+      let preferredDeviceId = localStorage.getItem("preferredCameraId");
+      if (!preferredDeviceId && videoDevices.length > 0) {
+        const backCam = videoDevices.find(device =>
+          device.label.toLowerCase().includes("back")
+        );
+        preferredDeviceId = backCam ? backCam.deviceId : videoDevices[0].deviceId;
       }
+
+      currentDeviceIndex = videoDevices.findIndex(d => d.deviceId === preferredDeviceId);
+      if (currentDeviceIndex === -1) currentDeviceIndex = 0;
+
+      cameraSelect.value = videoDevices[currentDeviceIndex].deviceId;
+      startCamera(videoDevices[currentDeviceIndex].deviceId).catch(err => {
+        alert("❌ Failed to start camera: " + err.message);
+        document.body.removeChild(modal);
+      });
     });
+
+  cameraSelect.onchange = () => {
+    const selectedDeviceId = cameraSelect.value;
+    currentDeviceIndex = videoDevices.findIndex(d => d.deviceId === selectedDeviceId);
+    localStorage.setItem("preferredCameraId", selectedDeviceId);
+    startCamera(selectedDeviceId).catch(err => {
+      alert("❌ Failed to start selected camera: " + err.message);
+    });
+  };
+
+  switchBtn.onclick = () => {
+    if (videoDevices.length < 2) {
+      alert("Only one camera available.");
+      return;
+    }
+
+    currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+    const nextDeviceId = videoDevices[currentDeviceIndex].deviceId;
+    cameraSelect.value = nextDeviceId;
+    localStorage.setItem("preferredCameraId", nextDeviceId);
+    startCamera(nextDeviceId).catch(err => {
+      alert("❌ Failed to switch camera: " + err.message);
+    });
+  };
 
   captureBtn.onclick = () => {
     captureBtn.disabled = true;
     cancelBtn.disabled = true;
+    switchBtn.disabled = true;
 
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 320;
     canvas.height = video.videoHeight || 240;
-
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(blob => {
       const capturedFile = new File([blob], `camera_capture.png`, { type: "image/png" });
       const fileKey = `${qid}-${rowIndex}-${colIndex}`;
@@ -1067,7 +1077,7 @@ function handleCameraUpload() {
         const fileURL = URL.createObjectURL(capturedFile);
         span.innerHTML = `<a href="${fileURL}" download="${capturedFile.name}">${capturedFile.name}</a>`;
         span.style.color = 'green';
-        setTimeout(() => URL.revokeObjectURL(fileURL), 60000); // Revoke after 1 min
+        setTimeout(() => URL.revokeObjectURL(fileURL), 60000);
         alert(`📸 Camera image "${capturedFile.name}" captured successfully!`);
       }
 
@@ -1082,8 +1092,6 @@ function handleCameraUpload() {
   };
 }
 
-
- 
 
 //------OPENUPLOADMODAL--------------------
 
