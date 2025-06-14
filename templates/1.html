@@ -921,7 +921,6 @@ function parseRowSpanId(rowSpanId) {
 
 //-------CAMERA-----------
 
-
 function handleCameraUpload() {
   closeUploadModal();
   const rowSpanId = document.getElementById("current-upload-row").value;
@@ -981,45 +980,65 @@ function handleCameraUpload() {
       video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "environment" }
     };
 
-    navigator.mediaDevices.getUserMedia(constraints)
+    return navigator.mediaDevices.getUserMedia(constraints)
       .then(stream => {
         currentStream = stream;
         video.srcObject = stream;
-      })
-      .catch(err => {
-        alert("Camera access failed: " + err.message);
-        document.body.removeChild(modal);
+        return true;
       });
   }
 
-  // Populate camera options and set preferred one
   navigator.mediaDevices.enumerateDevices()
-    .then(devices => {
+    .then(async devices => {
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      if (videoDevices.length === 0) {
+        alert("❌ No cameras detected.");
+        document.body.removeChild(modal);
+        return;
+      }
+
+      console.log("📷 Found video devices:", videoDevices);
+
       let preferredDeviceId = localStorage.getItem("preferredCameraId");
 
       videoDevices.forEach((device, index) => {
         const option = document.createElement('option');
         option.value = device.deviceId;
         option.text = device.label || `Camera ${index + 1}`;
+        cameraSelect.appendChild(option);
 
-        // Prefer "back" camera if no preference exists
         if (!preferredDeviceId && device.label.toLowerCase().includes("back")) {
           preferredDeviceId = device.deviceId;
         }
-
-        cameraSelect.appendChild(option);
       });
 
       cameraSelect.onchange = () => {
         const selectedDeviceId = cameraSelect.value;
         localStorage.setItem("preferredCameraId", selectedDeviceId);
-        startCamera(selectedDeviceId);
+        startCamera(selectedDeviceId).catch(err => {
+          alert("❌ Failed to start selected camera: " + err.message);
+        });
       };
 
-      if (preferredDeviceId) {
-        cameraSelect.value = preferredDeviceId;
-        startCamera(preferredDeviceId);
+      try {
+        const initialDeviceId = preferredDeviceId || videoDevices[0].deviceId;
+        cameraSelect.value = initialDeviceId;
+
+        const started = await startCamera(initialDeviceId);
+        if (!started) throw new Error("Camera failed to start");
+
+      } catch (err) {
+        console.warn("⚠️ Failed to start preferred camera:", err.message);
+        localStorage.removeItem("preferredCameraId");
+
+        try {
+          const fallbackDeviceId = videoDevices[0].deviceId;
+          cameraSelect.value = fallbackDeviceId;
+          await startCamera(fallbackDeviceId);
+        } catch (e2) {
+          alert("❌ No usable camera found.");
+          document.body.removeChild(modal);
+        }
       }
     });
 
@@ -1030,7 +1049,10 @@ function handleCameraUpload() {
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 320;
     canvas.height = video.videoHeight || 240;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
     canvas.toBlob(blob => {
       const capturedFile = new File([blob], `camera_capture.png`, { type: "image/png" });
       const fileKey = `${qid}-${rowIndex}-${colIndex}`;
@@ -1040,13 +1062,12 @@ function handleCameraUpload() {
         source: 'camera'
       };
 
-      console.log("📸 Saved camera file to uploadedFilesData:", fileKey, window.uploadedFilesData[fileKey]);
-
       const span = document.getElementById(rowSpanId);
       if (span) {
         const fileURL = URL.createObjectURL(capturedFile);
         span.innerHTML = `<a href="${fileURL}" download="${capturedFile.name}">${capturedFile.name}</a>`;
         span.style.color = 'green';
+        setTimeout(() => URL.revokeObjectURL(fileURL), 60000); // Revoke after 1 min
         alert(`📸 Camera image "${capturedFile.name}" captured successfully!`);
       }
 
@@ -1060,6 +1081,7 @@ function handleCameraUpload() {
     document.body.removeChild(modal);
   };
 }
+
 
  
 
