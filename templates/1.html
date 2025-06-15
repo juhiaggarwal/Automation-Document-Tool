@@ -235,7 +235,7 @@
     <input type="text" id="chatInput" placeholder="Ask here..."
             class="w-full p-2 text-sm border rounded dark:bg-gray-700 dark:text-white" />
     <div class="flex justify-between mt-1">
-      <button onclick="startVoiceInput()" class="text-blue-600">🎤</button>
+      <button onclick="startVoiceInput()" class="text-blue-600">🎙️</button>
       <button onclick="sendMessage()" class="text-blue-600">➤</button>
     </div>
     </div>
@@ -538,18 +538,15 @@
   */
 
 //------------------------- PREVIEW-------------------------------------------------------------------
-function captureAndPreview() {
+    function captureAndPreview() {
   const questionBlocks = document.querySelectorAll('.question-block');
-
-  // Helper to extract clean filename
-  function getCleanFileName(filePath) {
-    return filePath.split('\\').pop().split('/').pop();
-  }
 
   let documentHTML = `
     <html>
       <head><title>Document Preview</title></head>
       <style>
+        body { font-family: sans-serif; padding: 20px; }
+        h1 { text-align: center; color: #214a3b; }
         table {
           width: 100%;
           border-collapse: collapse;
@@ -560,12 +557,10 @@ function captureAndPreview() {
           padding: 8px;
           text-align: left;
         }
-        th {
-          background-color: #f5f5f5;
-        }
+        th { background-color: #f5f5f5; }
       </style>
-      <body style='font-family:sans-serif; padding:20px;'>
-        <h1 style='text-align:center; color:#214a3b;'>Automation Generation Tool</h1>
+      <body>
+        <h1>Automation Generation Tool</h1>
   `;
 
   questionBlocks.forEach(block => {
@@ -586,51 +581,42 @@ function captureAndPreview() {
       documentHTML += text.trim()
         ? `<pre style='white-space:pre-wrap;'>${text}</pre>`
         : `<p>${questionSkippedMessage}: No response provided.</p>`;
+
     } else if (select === 'table') {
       const table = block.querySelector('table');
       if (table) {
         const clonedTable = table.cloneNode(true);
-        clonedTable.querySelectorAll("tbody tr").forEach(row => {
+        clonedTable.querySelectorAll("tbody tr").forEach((row, rowIndex) => {
           row.querySelectorAll("td").forEach((cell, colIndex) => {
             const input = cell.querySelector("input");
-            if (input) {
-              let value = input.value.trim();
-              if (input.type === 'file') {
-                const files = input.files;
-                if (files.length > 0) {
-                  const file = files[0];
-                  const fileURL = URL.createObjectURL(file);
-                  const fileName = file.name;
-                  cell.innerHTML = `<a href="${fileURL}" download="${fileName}">${fileName}</a>`;
-                } else {
-                  cell.textContent = 'No file selected';
-                }
-              } else {
-                cell.textContent = value || "\u00A0";
-              }
-            }
             const span = cell.querySelector("span");
-            if (span && span.id) {
-              const match = span.id.match(/upload-name-(.+)-(\d+)-(\d+)/);
-              if (match) {
-                const [_, qid, rowIndex, colIndex] = match;
-                const key = `${qid}-${rowIndex}-${colIndex}`;
-                const uploadedFile = window.uploadedFilesData?.[key];
-                if (uploadedFile) {
-                  const fileURL = URL.createObjectURL(uploadedFile.file);
-                  const fileName = uploadedFile.name;
-                  cell.innerHTML = `<a href="${fileURL}" download="${fileName}">${fileName}</a>`;
-                } else {
-                  cell.innerHTML = `<span style="color: red;">No file uploaded</span>`;
-                }
+            const match = span?.id?.match(/upload-name-(.+)-(\d+)-(\d+)/);
+
+            if (input) {
+              const value = input.value.trim();
+              cell.textContent = value || "\u00A0";
+            }
+
+            if (match) {
+              const [_, qid, rIdx, cIdx] = match;
+              const key = `${qid}-${rIdx}-${cIdx}`;
+              const uploadedFile = window.uploadedFilesData?.[key];
+
+              if (uploadedFile) {
+                const fileURL = URL.createObjectURL(uploadedFile.file);
+                const fileName = uploadedFile.name;
+                cell.innerHTML = `<a href="${fileURL}" download="${fileName}">${fileName}</a>`;
+              } else {
+                cell.innerHTML = `<span style="color: red;">No file uploaded</span>`;
               }
             }
           });
         });
-        documentHTML += `<h3>Response Table</h3>${clonedTable.outerHTML}`;
+        documentHTML += `<h4>Response Table</h4>${clonedTable.outerHTML}`;
       } else {
         documentHTML += `<p>${questionSkippedMessage}: No table provided.</p>`;
       }
+
     } else if (select === 'skip') {
       documentHTML += `<p>${questionSkippedMessage}: User skipped this question.</p>`;
     } else {
@@ -643,6 +629,8 @@ function captureAndPreview() {
   previewWindow.document.write(documentHTML);
   previewWindow.document.close();
 }
+
+
 
 /*
 function captureAndPreview() {
