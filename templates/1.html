@@ -883,62 +883,46 @@ async function submitForm() {
 
 
 // ---------------------------pdf maker----------------------------------------
+
 function exportToPDF() {
-  const filename = prompt("Enter the base filename you used during submission:");
-  if (!filename) return;
+    const filename = prompt("Enter the base filename you used during submission:");
+    if (!filename) return;
 
-  const loader = document.getElementById("loading-indicator");
-  loader.style.display = "flex";
+    const loader = document.getElementById("loading-indicator");
+    loader.style.display = "flex"; // Show the loader
 
-  fetch(`/export-pdf?filename=${encodeURIComponent(filename)}`)
-    .then(async res => {
-      loader.style.display = "none";
+    fetch(`/export-pdf?filename=${encodeURIComponent(filename)}`)
+        .then(res => res.json())
+        .then(data => {
+            loader.style.display = "none"; // Hide the loader
 
-      const contentType = res.headers.get("Content-Type");
+            if (data.success) {
+                alert('PDF of your responses generated successfully!');
+                
+                // Download response PDF
+                const a1 = document.createElement("a");
+                a1.href = data.response_pdf_url;
+                a1.download = `${filename}_response.pdf`;
+                document.body.appendChild(a1);
+                a1.click();
+                a1.remove();
 
-      if (contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-
-        if (data.success) {
-          alert('PDF of your responses generated successfully!');
-
-          // Download both PDFs
-          const a1 = document.createElement("a");
-          a1.href = data.response_pdf_url;
-          a1.download = `${filename}_response.pdf`;
-          document.body.appendChild(a1);
-          a1.click();
-          a1.remove();
-
-          const a2 = document.createElement("a");
-          a2.href = data.uploads_pdf_url;
-          a2.download = `${filename}_uploads.pdf`;
-          document.body.appendChild(a2);
-          a2.click();
-          a2.remove();
-        } else {
-          alert("PDF export failed: " + data.message);
-        }
-
-      } else {
-        // Not JSON — probably a server error or unexpected text
-        const text = await res.text();
-        alert("Server error (not JSON): " + text.substring(0, 100));
-        console.error("Non-JSON response:", text);
-      }
-    })
-    .catch(err => {
-      loader.style.display = "none";
-      alert("Request failed: " + err.message);
-    });
+                // Download uploads PDF
+                const a2 = document.createElement("a");
+                a2.href = data.uploads_pdf_url;
+                a2.download = `${filename}_uploads.pdf`;
+                document.body.appendChild(a2);
+                a2.click();
+                a2.remove();
+            } else {
+                alert("PDF export failed: " + data.message);
+            }
+        })
+        .catch(err => {
+            loader.style.display = "none"; // Hide loader on error
+            alert("Request failed: " + err.message);
+        });
 }
-
-
-
-
-
-
-
 
 
 //-------CAMERA-----------
